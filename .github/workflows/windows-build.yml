@@ -1,3 +1,10 @@
+cd $env:VCPKG_ROOT
+.\vcpkg install qt6-base:x64-windows
+.\vcpkg install qt6-tools:x64-windows
+.\vcpkg install qt6-svg:x64-windows
+.\vcpkg install qt6-network:x64-windows
+.\vcpkg install qt6-webengine:x64-windows
+.\vcpkg install qt6-quick:x64-windows
 name: Build Prism Launcher Windows (Release)
 
 on:
