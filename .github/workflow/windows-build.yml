@@ -1,4 +1,4 @@
-name: Build Prism Launcher Windows
+name: Build Prism Launcher for Windows
 
 on:
   workflow_dispatch:
@@ -17,21 +17,21 @@ jobs:
       BUILD_TYPE: ${{ github.event.inputs['build-type'] }}
 
     steps:
-      # 1. Checkout repo
+      # 1. Checkout source code
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           submodules: true
 
-      # 2. Setup Qt and MSVC (через Chocolatey + vcpkg)
-      - name: Setup Qt 6.10.2
+      # 2. Setup Qt for MSVC
+      - name: Setup Qt 6
         uses: jurplel/install-qt-action@v2
         with:
           version: '6.10.2'
           host: 'windows'
           arch: 'win64_msvc'
 
-      # 3. Configure CMake
+      # 3. Configure the build
       - name: Configure CMake
         run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
@@ -39,13 +39,13 @@ jobs:
       - name: Build project
         run: cmake --build build --config ${{ env.BUILD_TYPE }}
 
-      # 5. Optional: run tests
+      # 5. Run tests (optional)
       - name: Run tests
         run: ctest --test-dir build --config ${{ env.BUILD_TYPE }}
 
-      # 6. Package: copy .exe to artifact
-      - name: Upload Windows .exe
-        uses: actions/upload-artifact@v3
+      # 6. Upload the executable as artifact (v4)
+      - name: Upload .exe artifact
+        uses: actions/upload-artifact@v4
         with:
           name: prism-launcher-windows
           path: build/${{ env.BUILD_TYPE }}/PrismLauncher.exe
