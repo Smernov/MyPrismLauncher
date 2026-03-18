@@ -1,0 +1,55 @@
+name: Build PrismLauncher (Windows)
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup MSVC
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Setup CMake
+      uses: lukka/get-cmake@latest
+
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+
+    - name: Configure
+      run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build
+      run: cmake --build build --config Release --parallel
+
+    - name: Collect EXE
+      run: |
+        mkdir output
+        copy build\bin\PrismLauncher.exe output\PrismLauncher.exe
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: PrismLauncher-Windows
+        path: output\PrismLauncher.exe
+
+  release:
+    needs: build
+    runs-on: windows-latest
+
+    steps:
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: PrismLauncher-Windows/PrismLauncher.exe
