@@ -8,50 +8,55 @@ jobs:
     name: Windows Build
     runs-on: windows-2022
 
-    env:
-      VCPKG_ROOT: ${{ runner.temp }}/vcpkg
-      CMAKE_BUILD_TYPE: Release
-
     steps:
 
+      # 1) Скачиваем код
       - name: Checkout repo
         uses: actions/checkout@v6
         with:
           submodules: true
 
+      # 2) Setup vcpkg
       - name: Setup vcpkg
         shell: powershell
         run: |
-          git clone https://github.com/microsoft/vcpkg "$env:VCPKG_ROOT"
-          cd "$env:VCPKG_ROOT"
+          $vcpkg_root = "$env:TEMP\vcpkg"
+          git clone https://github.com/microsoft/vcpkg $vcpkg_root
+          cd $vcpkg_root
           .\bootstrap-vcpkg.bat
+          echo "VCPKG_ROOT=$vcpkg_root" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
 
-      - name: Install Qt with vcpkg
+      # 3) Install Qt via vcpkg
+      - name: Install Qt
         shell: powershell
         run: |
-          cd "$env:VCPKG_ROOT"
+          cd $env:VCPKG_ROOT
           .\vcpkg install qt6-base:x64-windows
           .\vcpkg install qt6-tools:x64-windows
 
+      # 4) Configure CMake
       - name: Configure CMake
         shell: powershell
         run: |
-          cmake -S . -B build ^
-            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" ^
-            -DCMAKE_BUILD_TYPE=${{ env.CMAKE_BUILD_TYPE }}
+          cmake -S . -B build `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" `
+            -DCMAKE_BUILD_TYPE=Release
 
+      # 5) Build project
       - name: Build project
         shell: powershell
         run: |
-          cmake --build build --config ${{ env.CMAKE_BUILD_TYPE }}
+          cmake --build build --config Release
 
+      # 6) Run tests (optional)
       - name: Run tests
         shell: powershell
         run: |
-          ctest --test-dir build --config ${{ env.CMAKE_BUILD_TYPE }}
+          ctest --test-dir build --config Release
 
-      - name: Upload artifact
+      # 7) Upload .exe artifact
+      - name: Upload Windows executable
         uses: actions/upload-artifact@v4
         with:
           name: prism-launcher-windows
-          path: build/${{ env.CMAKE_BUILD_TYPE }}/PrismLauncher.exe
+          path: build/Release/PrismLauncher.exe
