@@ -1,55 +1,51 @@
-name: Build PrismLauncher (Windows)
+name: Build Prism Launcher Windows
 
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_dispatch:
+    inputs:
+      build-type:
+        description: 'Build type (Debug or Release)'
+        required: false
+        default: 'Release'
 
 jobs:
-  build:
-    runs-on: windows-latest
+  build-windows:
+    name: Build Windows .exe
+    runs-on: windows-2022
+
+    env:
+      BUILD_TYPE: ${{ github.event.inputs['build-type'] }}
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
+      # 1. Checkout repo
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          submodules: true
 
-    - name: Setup MSVC
-      uses: ilammy/msvc-dev-cmd@v1
+      # 2. Setup Qt and MSVC (через Chocolatey + vcpkg)
+      - name: Setup Qt 6.10.2
+        uses: jurplel/install-qt-action@v2
+        with:
+          version: '6.10.2'
+          host: 'windows'
+          arch: 'win64_msvc'
 
-    - name: Setup CMake
-      uses: lukka/get-cmake@latest
+      # 3. Configure CMake
+      - name: Configure CMake
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
-    - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v11
+      # 4. Build
+      - name: Build project
+        run: cmake --build build --config ${{ env.BUILD_TYPE }}
 
-    - name: Configure
-      run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+      # 5. Optional: run tests
+      - name: Run tests
+        run: ctest --test-dir build --config ${{ env.BUILD_TYPE }}
 
-    - name: Build
-      run: cmake --build build --config Release --parallel
-
-    - name: Collect EXE
-      run: |
-        mkdir output
-        copy build\bin\PrismLauncher.exe output\PrismLauncher.exe
-
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: PrismLauncher-Windows
-        path: output\PrismLauncher.exe
-
-  release:
-    needs: build
-    runs-on: windows-latest
-
-    steps:
-    - name: Download artifact
-      uses: actions/download-artifact@v4
-
-    - name: Create Release
-      uses: softprops/action-gh-release@v2
-      with:
-        files: PrismLauncher-Windows/PrismLauncher.exe
+      # 6. Package: copy .exe to artifact
+      - name: Upload Windows .exe
+        uses: actions/upload-artifact@v3
+        with:
+          name: prism-launcher-windows
+          path: build/${{ env.BUILD_TYPE }}/PrismLauncher.exe
